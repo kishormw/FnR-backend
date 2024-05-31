@@ -8,7 +8,7 @@ const extract = require("./extract");
 
 extract(); //Calling for token refreshing.
 
-let PORT = 8081;
+let PORT = 8080;
 
 const currentDate = new Date();
 const currentTimestamp = currentDate.getTime();
@@ -28,8 +28,7 @@ app.use(cors({
     methods: ['GET', 'POST'],
     credentials: true
 }));
-
-app.listen(PORT, () => {
+app.listen(process.env.PORT, () => {
     console.log('started server');
     console.log('Server is running on port ', PORT);
 });
