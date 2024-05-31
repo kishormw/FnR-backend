@@ -8,7 +8,7 @@ const extract = require("./extract");
 
 extract(); //Calling for token refreshing.
 
-//let PORT; ok
+//let PORT; 
 
 const currentDate = new Date();
 const currentTimestamp = currentDate.getTime();
@@ -24,7 +24,7 @@ const dynamicDateEnd = currentTimestamp;
 app.use(express.json());
 
 app.use(cors({
-    origin: ['http://localhost:3000'],
+    origin: ['process.env.PORT'],
     methods: ['GET', 'POST'],
     credentials: true
 }));
