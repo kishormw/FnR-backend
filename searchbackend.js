@@ -8,7 +8,7 @@ const extract = require("./extract");
 
 extract(); //Calling for token refreshing.
 
-let PORT = 8080;
+//let PORT;
 
 const currentDate = new Date();
 const currentTimestamp = currentDate.getTime();
