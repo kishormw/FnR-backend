@@ -19,7 +19,7 @@ function extract() {
   const updateEnvFile = (newToken) => {
     try {
       dotenv.parsed.AUTH_TOKEN = newToken;
-      const serializedEnv = Object.keys(dotenv.parsed)
+      const serializedEnv = Object.keys(dotenv.parsed)  
         .map(key => `${key}=${dotenv.parsed[key]}`)
         .join('\n');
       fs.writeFileSync('.env', serializedEnv);
