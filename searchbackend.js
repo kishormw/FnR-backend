@@ -4,11 +4,10 @@ const cors = require('cors');
 const request = require('request');
 const axios = require("axios");
 const dotenv = require("dotenv").config();
-const extract = require("./extract");
+const { getToken } = require("./getToken");
+const { updateToken } = require("./refreshToken");
 
-extract(); //Calling for token refreshing.
-
-let PORT = process.env.ListenPort; //
+let PORT = process.env.ListenPort;
 
 const currentDate = new Date();
 const currentTimestamp = currentDate.getTime();
@@ -32,230 +31,199 @@ app.listen(PORT, () => {
     console.log('Server is running on port ', PORT);
 });
 
+//Token function
+async function fetchToken() {
+    let token;
+    let isNewToken;
 
-//Forum Endpoints.
-app.post('/forumscheck', (req, res) => {
+    try {
+        [token, isNewToken] = await getToken();
+        if (isNewToken) {
+            await updateToken(token);
+        }
+    } catch (error) {
+        console.error('Error fetching token:', error);
+        return null;
+    }
+
+    return token;
+}
+
+
+// Forum Endpoints.
+app.post('/forumscheck', async (req, res) => {
     const forumurl = req.body.Query;
     console.log('Forum URL ', forumurl);
-    getToken(forumurl);
-    function getToken(forumurl) {
-        const options1 = {
-            method: 'POST',
-            url: 'https://discovery-next-mw-apollo-production.meltwater.io/graphql',
-            headers: {
-                Connection: 'keep-alive',
-                Origin: 'https://app.meltwater.com',
-                Referer: 'https://app.meltwater.com/',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'cross-site',
-                accept: '*/*',
-                'apollographql-client-name': 'discovery-next',
-                'apollographql-client-version': '01720b04ab61ded08e94e76a669bab60486dbb09',
-                authorization: `Bearer ${process.env.AUTH_TOKEN}`,
-                'content-type': 'application/json'
-            },
-            body: {
-                operationName: 'GetToken',
-                variables: {
-                    searchCriteria: {
-                        booleanQuery: forumurl,
-                        filter: {
-                            type: 'CUSTOM',
-                            filters: {
-                                sourceType: ['social_message_boards'],
-                            }
-                        },
-                        caseSensitive: 'no',
-                        searchQueryType: 'boolean'
-                    },
-                    elsEntities: [],
-                    dateStart: "2023-05-17T18:30:00.000Z",
-                    dateEnd: "2024-05-21T18:29:59.999Z"
-                },
-                query: 'query GetToken($searchCriteria: SearchQueryInput!, $elsEntities: [KgEntityInput!], $dateStart: String, $dateEnd: String) {\n  token(\n    searchQuery: $searchCriteria\n    elsEntities: $elsEntities\n    dateStart: $dateStart\n    dateEnd: $dateEnd\n  ) {\n    token\n    __typename\n  }\n}'
-            },
-            json: true
-        };
-        const options2 = {
-            method: 'POST',
-            url: 'https://af.meltwater.io/data/runes',
-            headers: {
-                Accept: 'application/json',
-                Authorization: process.env.AUTH_TOKEN,
-                Connection: 'keep-alive',
-                'Content-Type': 'application/json',
-                Origin: 'https://app.meltwater.com',
-                Referer: 'https://app.meltwater.com/',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'cross-site'
-            },
-            body: {
-                token: '!OxZNoihHRiQGjauoTaI/ecnAsJlIQfe3tjAWeptd7ahyzpLsCkPGT4uJjLABMaTkHQT1ojVCwEX5bvSkutCXjv5YCyY61/UMnepIo/8d2KG2H5lSU2dp0ZZvvVMtsaWJR9vHVXxPKxr0w1Mz5Mt+PimV0yivCQlRZpxKYBlAIOzCniPyD0tOMI8iHJKtB74+HvHBJOXXW4EaCg3AkvQyfvzHVLxVdiiY8WecxGUOB1r+IbXJzKBep7nrwAdKxSYFH/ylxhy8aHt1lvAuYdRTcE0JUQ7qTQqXQN/M15bZZW3f9pn8++3c92qFVI7HmyR1TybDCtY0QL6P/fsgpgOTozHELKzDmEhzBi7wuQMvBWIhTQgcEBlMrdAHslBuZCWnmZd8rwpaHZnkSkvhLuJDGmFtzXEoOG2dPgfRb4Ifl7IccPPpHuK/mH2f6k8Hfx+unlRRJ+kcVZQBMn9Moh5MSi+JiNduVDF0OrmTZ2vFY8+tc4vKhirM9098OjjENDAZKEpLISA+eT6/tN3nMy+PDkci9vXhgpqMmaQXHY+gc9E'
-            },
-            json: true
-        };
-        const options3 = {
-            method: 'POST',
-            url: 'https://af.meltwater.io/data/search',
-            headers: {
-                Accept: 'application/json',
-                Authorization: process.env.AUTH_TOKEN,
-                Connection: 'keep-alive',
-                'Content-Type': 'application/json',
-                Origin: 'https://app.meltwater.com',
-                Referer: 'https://app.meltwater.com/',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'cross-site'
-            },
-            body: {
-                runes: {
-                    type: 'all',
-                    allQueries: [
-                        {
-                            type: 'not',
-                            matchQuery: { type: 'all', allQueries: [] },
-                            notMatchQuery: {
-                                type: 'all',
-                                allQueries: [
-                                    { type: 'term', field: 'metaData.source.socialOriginType', value: 'sina_weibo' },
-                                    { type: 'term', field: 'metaData.discussionType', value: 'rp' }
-                                ]
-                            }
-                        },
-                        {
+
+    const token = await fetchToken();
+    if (!token) {
+        return res.status(500).send('Failed to fetch token');
+    }
+
+    const options3 = {
+        method: 'POST',
+        url: 'https://af.meltwater.io/data/search',
+        headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+            Connection: 'keep-alive',
+            'Content-Type': 'application/json',
+            Origin: 'https://app.meltwater.com',
+            Referer: 'https://app.meltwater.com/',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'cross-site'
+        },
+        body: {
+            runes: {
+                type: 'all',
+                allQueries: [
+                    {
+                        type: 'not',
+                        matchQuery: { type: 'all', allQueries: [] },
+                        notMatchQuery: {
+                            type: 'all',
                             allQueries: [
-                                {
-                                    field: 'metaData.analyzedUrl',
-                                    value: forumurl,
-                                    type: 'word'
-                                },
-                                {
-                                    anyQueries: [
-                                        {
-                                            allQueries: [
-                                                { field: 'metaData.source.informationType', value: 'social', type: 'term' },
-                                                {
-                                                    anyQueries: [
-                                                        { field: 'metaData.source.socialOriginType', value: 'social_blogs', type: 'term' },
-                                                        {
-                                                            field: 'metaData.source.socialOriginType',
-                                                            value: 'social_comments',
-                                                            type: 'term'
-                                                        },
-                                                        {
-                                                            field: 'metaData.source.socialOriginType',
-                                                            value: 'social_message_boards',
-                                                            type: 'term'
-                                                        },
-                                                        {
-                                                            field: 'metaData.source.socialOriginType',
-                                                            value: 'social_reviews',
-                                                            type: 'term'
-                                                        },
-                                                    ],
-                                                    type: 'any'
-                                                }
-                                            ],
-                                            type: 'all'
-                                        }
-                                    ],
-                                    type: 'any'
-                                },
-                                {
-                                    allQueries: [
-                                        {
-                                            anyQueries: [
-                                                {
-                                                    field: 'metaData.source.socialOriginType',
-                                                    value: 'social_message_boards',
-                                                    type: 'term'
-                                                }
-                                            ],
-                                            type: 'any'
-                                        }
-                                    ],
-                                    type: 'all'
-                                }
-                            ],
-                            type: 'all'
+                                { type: 'term', field: 'metaData.source.socialOriginType', value: 'sina_weibo' },
+                                { type: 'term', field: 'metaData.discussionType', value: 'rp' }
+                            ]
                         }
-                    ]
-                },
-                twitterApproved: false,
-                dateRange: { dateStart: dynamicDateStart, dateEnd: dynamicDateEnd, granularity: 'day' },
-                document: {
-                    sortField: 'date',
-                    sortOrder: 'DESC',
-                    groupingOption: 'similar',
-                    groupFrom: 0,
-                    start: 0,
-                    size: 25,
-                    page: 0,
-                    hidden: false,
-                    keywords: []
-                },
-                entityCanonicalNames: [],
-                visualizationIds: [
-                    'AF-mentionsStatsTrendPredictive',
-                    'AF-topStories',
-                    'AF-topStoriesBubble',
-                    'AF-topTerms',
-                    'AF-topLocations',
-                    'AF-sentiment',
-                    'AF-resultListSorted',
-                    'AF-filterTotal',
-                    'AF-filterCountry',
-                    'AF-filterInformationType',
-                    'AF-filterLanguage',
-                    'AF-filterMediaType',
-                    'AF-filterSentiment',
-                    'AF-filterSourceType',
-                    'AF-mergedSourceTypes'
+                    },
+                    {
+                        allQueries: [
+                            {
+                                field: 'metaData.analyzedUrl',
+                                value: forumurl,
+                                type: 'word'
+                            },
+                            {
+                                anyQueries: [
+                                    {
+                                        allQueries: [
+                                            { field: 'metaData.source.informationType', value: 'social', type: 'term' },
+                                            {
+                                                anyQueries: [
+                                                    { field: 'metaData.source.socialOriginType', value: 'social_blogs', type: 'term' },
+                                                    {
+                                                        field: 'metaData.source.socialOriginType',
+                                                        value: 'social_comments',
+                                                        type: 'term'
+                                                    },
+                                                    {
+                                                        field: 'metaData.source.socialOriginType',
+                                                        value: 'social_message_boards',
+                                                        type: 'term'
+                                                    },
+                                                    {
+                                                        field: 'metaData.source.socialOriginType',
+                                                        value: 'social_reviews',
+                                                        type: 'term'
+                                                    },
+                                                ],
+                                                type: 'any'
+                                            }
+                                        ],
+                                        type: 'all'
+                                    }
+                                ],
+                                type: 'any'
+                            },
+                            {
+                                allQueries: [
+                                    {
+                                        anyQueries: [
+                                            {
+                                                field: 'metaData.source.socialOriginType',
+                                                value: 'social_message_boards',
+                                                type: 'term'
+                                            }
+                                        ],
+                                        type: 'any'
+                                    }
+                                ],
+                                type: 'all'
+                            }
+                        ],
+                        type: 'all'
+                    }
                 ]
             },
-            json: true
-        };
+            twitterApproved: false,
+            dateRange: { dateStart: dynamicDateStart, dateEnd: dynamicDateEnd, granularity: 'day' },
+            document: {
+                sortField: 'date',
+                sortOrder: 'DESC',
+                groupingOption: 'similar',
+                groupFrom: 0,
+                start: 0,
+                size: 25,
+                page: 0,
+                hidden: false,
+                keywords: []
+            },
+            entityCanonicalNames: [],
+            visualizationIds: [
+                'AF-mentionsStatsTrendPredictive',
+                'AF-topStories',
+                'AF-topStoriesBubble',
+                'AF-topTerms',
+                'AF-topLocations',
+                'AF-sentiment',
+                'AF-resultListSorted',
+                'AF-filterTotal',
+                'AF-filterCountry',
+                'AF-filterInformationType',
+                'AF-filterLanguage',
+                'AF-filterMediaType',
+                'AF-filterSentiment',
+                'AF-filterSourceType',
+                'AF-mergedSourceTypes'
+            ]
+        },
+        json: true
+    };
 
-        request(options3, function (error, response, body) {
-            if (error) throw new Error(error);
-            if (body["AF-mentionsStatsTrendPredictive"]["compoundWidgetData"]["AF-totalMentions"]["number"] === 0) {
-                const hasSlash = /\/+/.test(forumurl);
-                if (hasSlash) {
-                    console.log("no results found");
-                    forumurl = forumurl.replace(/\/[^/]*$/, '');
-                    if (forumurl === 'https:/*' || forumurl === 'www.' || forumurl === 'https:*') {
-                        console.log("Invalid URL after truncation");
-                    } else {
+    request(options3, function (error, response, body) {
+        if (error) {
+            console.error('Error in request:', error);
+            return res.status(500).send('Internal Server Error');
+        }
 
-
-                        getToken(forumurl);
-                        console.log('truncate', forumurl);
-
-                    }
+        if (body["AF-mentionsStatsTrendPredictive"]["compoundWidgetData"]["AF-totalMentions"]["number"] === 0) {
+            const hasSlash = /\/+/.test(forumurl);
+            if (hasSlash) {
+                console.log("No results found");
+                forumurl = forumurl.replace(/\/[^/]*$/, '');
+                if (forumurl === 'https:/*' || forumurl === 'www.' || forumurl === 'https:*') {
+                    console.log("Invalid URL after truncation");
+                    return res.status(400).send("Invalid URL after truncation");
+                } else {
+                    console.log('Truncate', forumurl);
+                    getToken(forumurl);
                 }
-                else {
-                    console.log("Results not found");
-                    res.send("Results not found");
-                }
+            } else {
+                console.log("Results not found");
+                return res.send("Results not found");
             }
-            else {
-                console.log("results found");
-                const documents = body['AF-resultListSorted'].documents;
-                res.json(documents);
-            }
-        });
-    }
-})
+        } else {
+            console.log("Results found");
+            const documents = body['AF-resultListSorted'].documents;
+            return res.json(documents);
+        }
+    });
+});
+
 
 
 //Reviews Endpoints.
 //1. For URL Search.
-app.post('/reviewsurl', (req, res) => {
+app.post('/reviewsurl', async (req, res) => {
     const reviewurl = req.body.Query;
     console.log('Review URL ', reviewurl);
+    const token = await fetchToken();
+    if (!token) {
+        return res.status(500).send('Failed to fetch token');
+    }
     getToken(reviewurl);
     function getToken(reviewurl) {
         const options1 = {
@@ -268,10 +236,10 @@ app.post('/reviewsurl', (req, res) => {
                 'Sec-Fetch-Dest': 'empty',
                 'Sec-Fetch-Mode': 'cors',
                 'Sec-Fetch-Site': 'cross-site',
-                 accept: '*/*',
+                accept: '*/*',
                 'apollographql-client-name': 'discovery-next',
                 'apollographql-client-version': '7640c5c15c83b3dea37728ea8b0118ae9e23b94b',
-                authorization: `Bearer ${process.env.AUTH_TOKEN}`,
+                Authorization: `Bearer ${token}`,
                 'content-type': 'application/json'
             },
             body: '{"operationName":"GetToken","variables":{"searchCriteria":{"booleanQuery":"url:\\"https://www.flipkart.com/reviews/SWSGHCKFG6PRXGFN:106?reviewId7e865ae7-716d-4e62-a3f4-de98d9fe8178\\"","filter":{"type":"CUSTOM","filters":{"subKeyword":[],"country":[],"geoname":[],"booleans":[],"language":[],"newsReach":[],"rssSource":[],"sentiment":[],"authorList":[],"newsSource":[],"sourceType":["social_reviews"],"customCategory":[],"newsOutletTypes":[],"newsMediaFormats":[],"newsPremiumTypes":[],"broadcastSubtypes":[],"twitter":{"likes":{},"gender":[],"replies":{},"retweets":{},"followers":{},"tweetType":[],"accountStatus":[]}}},"allKeywords":[],"anyKeywords":[],"notKeywords":[],"allSearches":[],"anySearches":[],"notSearches":[],"caseSensitive":"no","searchQueryType":"boolean","informationTypes":[]},"elsEntities":[],"dateStart":"2022-12-31T18:30:00.000Z","dateEnd":"2023-12-31T18:29:59.999Z"},"query":"query GetToken($searchCriteria: SearchQueryInput\u0021, $elsEntities: [KgEntityInput\u0021], $dateStart: String, $dateEnd: String) {\\n  token(\\n    searchQuery: $searchCriteria\\n    elsEntities: $elsEntities\\n    dateStart: $dateStart\\n    dateEnd: $dateEnd\\n  ) {\\n    token\\n    __typename\\n  }\\n}"}'
@@ -282,7 +250,7 @@ app.post('/reviewsurl', (req, res) => {
             url: 'https://af.meltwater.io/data/runes',
             headers: {
                 Accept: 'application/json',
-                Authorization: process.env.AUTH_TOKEN,
+                Authorization: token,
                 Connection: 'keep-alive',
                 'Content-Type': 'application/json',
                 Origin: 'https://app.meltwater.com',
@@ -299,7 +267,7 @@ app.post('/reviewsurl', (req, res) => {
             url: 'https://af.meltwater.io/data/search',
             headers: {
                 Accept: 'application/json',
-                Authorization: process.env.AUTH_TOKEN,
+                Authorization: token,
                 Connection: 'keep-alive',
                 'Content-Type': 'application/json',
                 Origin: 'https://app.meltwater.com',
@@ -451,21 +419,26 @@ app.post('/reviewsurl', (req, res) => {
 
 
 // 2. For Keyword Search.
-app.post('/reviewskeywords', (req, res) => {
+app.post('/reviewskeywords', async (req, res) => {
     const reviewurl = req.body.Query;
     const reviewwords = req.body.Words;
-
     console.log('Review URL:', reviewurl);
-    console.log('Review words:', reviewwords);
-
-    getToken(reviewurl, reviewwords);
+    console.log('Review words:', reviewwords)
+    const token = await fetchToken();
+    if (!token) {
+        return res.status(500).send('Failed to fetch token');
+    }
+    else{
+        getToken(reviewurl, reviewwords);
+    }
+    
     function getToken(reviewurl, reviewwords) {
         const options1 = {
             method: 'POST',
             url: 'https://discovery-next-mw-apollo-production.meltwater.io/graphql',
             headers: {
-                
-                authorization: `Bearer ${process.env.AUTH_TOKEN}`,
+
+                Authorization: `Bearer ${token}`,
                 'content-type': 'application/json',
                 accept: '*/*',
                 Referer: 'https://app.meltwater.com/',
@@ -479,7 +452,7 @@ app.post('/reviewskeywords', (req, res) => {
             method: 'POST',
             url: 'https://af.meltwater.io/data/runes',
             headers: {
-                Authorization: process.env.AUTH_TOKEN,
+                Authorization: token,
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
                 Referer: 'https://app.meltwater.com/'
@@ -495,7 +468,7 @@ app.post('/reviewskeywords', (req, res) => {
             method: 'POST',
             url: 'https://af.meltwater.io/data/search',
             headers: {
-                Authorization: process.env.AUTH_TOKEN,
+                Authorization: token,
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
                 Referer: 'https://app.meltwater.com/'
@@ -617,34 +590,32 @@ app.post('/reviewskeywords', (req, res) => {
 
         request(options3, function (error, response, body) {
             if (error) throw new Error(error);
-        
             if (body["AF-mentionsStatsTrendPredictive"]["compoundWidgetData"]["AF-totalMentions"]["number"] == 0) {
-                const protocolEnd = reviewurl.indexOf("://") + 3;
-                const baseUrl = reviewurl.slice(0, protocolEnd);
-                let remainingUrl = reviewurl.slice(protocolEnd);
-                if (remainingUrl.includes('/')) {
-                    remainingUrl = remainingUrl.replace(/\/[^/]*$/, '*');
-                    reviewurl = baseUrl + remainingUrl;
-        
-                    getToken(reviewurl, reviewwords);
-                    console.log('truncate', reviewurl, 'Keyword:',reviewwords);                       
+                const hasSlash = /\/+/.test(reviewurl);
+                if (hasSlash) {
+                    console.log("no results found");
+                    reviewurl = reviewurl.replace(/\/[^/]*$/, '*');
+                    if (reviewurl === 'https:/*' || reviewurl === 'http:/*' || reviewurl === 'www.' || reviewurl === 'http://*' || reviewurl === 'https://*') {
+                        console.log("Invalid URL after truncation");
+                        res.send("Results not found");
+                    } else {
+                        getToken(reviewurl, reviewwords);
+                        console.log('truncate', reviewurl);
+                    }
                 } else {
-                    console.log("Invalid URL after truncation");
+                    console.log("Results not found");
                     res.send("Results not found");
                 }
             } else {
-                console.log("Results not found");
-                res.send("Results not found");
+                console.log("results found");
+                const documents = body['AF-resultListSorted'].documents;
+                res.json(documents);
             }
         });
-        
-
-
     }
 })
 
 //Geting the User details. 
-
 let userDetails = {};
 
 // login user email address
@@ -669,8 +640,8 @@ app.post('/forumticket', (req, res) => {
             'Authorization': `Basic ${process.env.BASIC_TOKEN}==`,
             'Cookie': 'atlassian.xsrf.token=6aa3f8fb144c5fff4c660b84b1f67e08e12e5e08_lin'
         }
-};
-//'Basic ZGlzaGFudGgucEBtZWx0d2F0ZXIuY29tOkFUQVRUM3hGZkdGMGloSHdqUElRSW9INW1RU2pObDBtZHNYQnRjenN0NEl4bWhBeE1Gazk1ZnV4YnBNU2tQTnM2WmdldV9ySmp1cm5pNVBYZVNwOW02VUR0RzVzLVc5N0p0TnFPOE0yTTVoVnYxU2RvTVZza1dUVGlLS3ExVE1HVDAxWEtLcEhUZlYtUkNKVlZoVUVoOVZ4SUYyLXpDMFJhNHFydEVXRHJxSnV1QW02V0ZGTzRwND1BRTBFNzE4Mg=='
+    };
+    //'Basic ZGlzaGFudGgucEBtZWx0d2F0ZXIuY29tOkFUQVRUM3hGZkdGMGloSHdqUElRSW9INW1RU2pObDBtZHNYQnRjenN0NEl4bWhBeE1Gazk1ZnV4YnBNU2tQTnM2WmdldV9ySmp1cm5pNVBYZVNwOW02VUR0RzVzLVc5N0p0TnFPOE0yTTVoVnYxU2RvTVZza1dUVGlLS3ExVE1HVDAxWEtLcEhUZlYtUkNKVlZoVUVoOVZ4SUYyLXpDMFJhNHFydEVXRHJxSnV1QW02V0ZGTzRwND1BRTBFNzE4Mg=='
 
     request(accid, function (error, response) {
         if (error) throw new Error(error);
@@ -715,7 +686,7 @@ app.post('/forumticket', (req, res) => {
                     "reporter": {
                         "self": `${process.env.API_BASE_URL}/rest/api/3/user?accountId= ${accountId}`,
                         "accountId": accountId,
-                        "emailAddress": email, //needs to change this to loged in user
+                        "emailAddress": email, 
                         "avatarUrls": {
                             "48x48": "https://secure.gravatar.com/avatar/5fb9ca4a8f36c77dfb2119acdbc6bc22?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSC-3.png",
                             "24x24": "https://secure.gravatar.com/avatar/5fb9ca4a8f36c77dfb2119acdbc6bc22?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSC-3.png",

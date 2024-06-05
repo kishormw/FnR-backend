@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "searchbackend.js",
   "scripts": {
-    "start": "node searchbackend.js"
+    "start": "nodemon searchbackend.js"
   },
   "author": "",
   "license": "ISC",
